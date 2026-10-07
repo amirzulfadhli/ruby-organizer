@@ -7,13 +7,17 @@ files = Dir.entries(folder)
 categories = ["Images", "Documents", "Videos", "Archives", "Others"]
 
 categories.each do |category|
-  unless Dir.exist?(category)
-    Dir.mkdir(category)
+  category_path = File.join(folder, category)
+
+  unless Dir.exist?(category_path)
+    Dir.mkdir(category_path)
   end
 end
 
 files.each do |file|
-  if File.file?(file)
+  file_path = File.join(folder, file)
+
+  if File.file?(file_path)
     extension = File.extname(file)
 
     if [".jpg", ".png", ".gif"].include?(extension)
@@ -28,8 +32,10 @@ files.each do |file|
       category = "Others"
     end
 
-    puts "#{file} → #{category}"
+    destination = File.join(folder, category)
 
-    FileUtils.mv(file, category)
+    puts "#{file} -> #{category}"
+
+    FileUtils.mv(file_path, destination)
   end
 end
