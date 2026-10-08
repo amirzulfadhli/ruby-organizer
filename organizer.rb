@@ -1,6 +1,17 @@
 require "fileutils"
 
-folder = "test_files"
+folder = ARGV.find { |arg| arg != "--dry-run" }
+dry_run = ARGV.include?("--dry-run")
+
+if folder.nil?
+  puts "Usage: ruby organizer.rb <folder>"
+  exit
+end
+
+unless Dir.exist?(folder)
+  puts "Error: Folder '#{folder}' does not exist."
+  exit
+end
 
 files = Dir.entries(folder)
 
@@ -18,7 +29,7 @@ files.each do |file|
   file_path = File.join(folder, file)
 
   if File.file?(file_path)
-    extension = File.extname(file)
+    extension = File.extname(file).downcase
 
     if [".jpg", ".png", ".gif"].include?(extension)
       category = "Images"
@@ -36,6 +47,8 @@ files.each do |file|
 
     puts "#{file} -> #{category}"
 
-    FileUtils.mv(file_path, destination)
+    unless dry_run
+      FileUtils.mv(file_path, destination)
+    end
   end
 end
