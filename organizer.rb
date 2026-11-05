@@ -8,23 +8,25 @@ if folder.nil?
   exit
 end
 
-unless Dir.exist?(folder)
+unless dry_run || Dir.exist?(folder)
   puts "Error: Folder '#{folder}' does not exist."
   exit
 end
 
 files = Dir.entries(folder)
 
+puts "Scanning folder: #{File.expand_path(folder)}"
+puts "Found entries: #{files.inspect}"
+
 categories = ["Images", "Documents", "Videos", "Archives", "Others"]
 
-categories.each do |category|
-  category_path = File.join(folder, category)
-
-  unless Dir.exist?(category_path)
-    Dir.mkdir(category_path)
+unless dry_run
+  categories.each do |category|
+    category_path = File.join(folder, category)
+    Dir.mkdir(category_path) unless Dir.exist?(category_path)
   end
 end
-
+ 
 files.each do |file|
   file_path = File.join(folder, file)
 
@@ -43,9 +45,18 @@ files.each do |file|
       category = "Others"
     end
 
-    destination = File.join(folder, category)
+    destination_folder = File.join(folder, category)
+    destination = File.join(destination_folder, file)
+
+    if File.exist?(destination)
+      puts "SKIPPED: #{file} already exists in #{category}"
+      next
+    end
 
     puts "#{file} -> #{category}"
+
+    puts "DEBUG: dry_run = #{dry_run}"
+
 
     unless dry_run
       FileUtils.mv(file_path, destination)
