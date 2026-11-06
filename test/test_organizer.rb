@@ -3,6 +3,7 @@ require "tmpdir"
 require "fileutils"
 require "open3"
 require "rbconfig"
+require "json"
 
 class TestOrganizer < Minitest::Test
   def setup
@@ -68,5 +69,45 @@ class TestOrganizer < Minitest::Test
     assert_includes output, "SKIPPED: photo.jpg"
     assert_equal "new image", File.read(source)
     assert_equal "original image", File.read(existing)
+  end
+
+  def test_history_recors_successful_move
+    File.write(File.join(@folder, "report.pdf"), "test")
+
+    _, errors, status = run_organizer
+
+    assert status.success?, errors
+
+    history_file = File.join(@folder, ".ruby_history.json")
+    assert File.exist?(history_file)
+
+    history = JSON.parse(File.read(history_file))
+    
+    assert_equal 1, history.length
+    assert_equal File.join(@folder, "report.pdf"),
+                  history[0]["source"]
+    assert_equal File.join(@folder, "Documents", "report.pdf"),
+                  history[0]["destination"]
+    assert history[0].key?("moved_at")
+  end
+
+  def test_history_preserved_across_runs
+    File.write(File.join(@folder, "first.pdf"), "first")
+    _, errors, status = run_organizer
+    assert status.success?, errors
+
+    File.write(File.join(@folder, "second.pdf"), "second")
+    _, errors, status = run_organizer
+    assert status.success?, errors
+
+    history = JSON.parse(
+      File.read(File.join(@folder, ".ruby_history.json"))
+    )
+
+    assert_equal 2, history.length
+    assert_equal(
+      ["first.pdf", "second.pdf"],
+      history.map { |entry| File.basename(entry["source"])}
+    )
   end
 end

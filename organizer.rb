@@ -1,7 +1,20 @@
 require "fileutils"
+require "json"
+require "time"
+
 
 folder = ARGV.find { |arg| arg != "--dry-run" }
 dry_run = ARGV.include?("--dry-run")
+
+history_file = File.join(folder, ".ruby_history.json")
+
+history = if File.exist?(history_file)
+  JSON.parse(File.read(history_file))
+else
+  []
+end
+
+new_moves = []
 
 if folder.nil?
   puts "Usage: ruby organizer.rb <folder>"
@@ -28,6 +41,8 @@ unless dry_run
 end
  
 files.each do |file|
+  next if file == ".ruby_history.json"
+  
   file_path = File.join(folder, file)
 
   if File.file?(file_path)
@@ -60,6 +75,23 @@ files.each do |file|
 
     unless dry_run
       FileUtils.mv(file_path, destination)
+
+      new_moves << {
+        source: File.expand_path(file_path),
+        destination: File.expand_path(destination),
+        moved_at: Time.now.utc.iso8601
+      }
     end
   end
+end
+
+unless dry_run || new_moves.empty?
+  history.concat(new_moves)
+
+  File.write(
+    history_file,
+    JSON.pretty_generate(history)
+  )
+
+  puts "History saved: #{history_file}"
 end
