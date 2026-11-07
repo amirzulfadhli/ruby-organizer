@@ -6,6 +6,7 @@ require "time"
 folder = ARGV.find { |arg| arg != "--dry-run" }
 dry_run = ARGV.include?("--dry-run")
 
+
 history_file = File.join(folder, ".ruby_history.json")
 
 history = if File.exist?(history_file)

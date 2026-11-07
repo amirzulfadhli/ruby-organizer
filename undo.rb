@@ -1,6 +1,12 @@
 require "json"
+require "FileUtils"
 
-folder = ARGV.find { |arg| !arg.start_with?("--") }
+folder = ARGV.find { |arg| !["--dry-run", "--apply"].include?(arg)}
+dry_run = ARGV.include?("--dry-run")
+apply = ARGV.include?("--apply")
+
+puts "Folder: #{folder.inspect}"
+puts "Apply mode: #{apply}"
 
 if folder.nil? || !Dir.exist?(folder)
   warn "usage: ruby undo.rb <folder>"
@@ -40,7 +46,7 @@ history.reverse_each do |entry|
   source = File.expand_path(entry["source"])
   destination = File.expand_path(entry["destination"])
 
-  if File.basename(source) == ".ruby_history.json"
+  if File.basename(source) == ".ruby_history.json" ||
      File.basename(destination) == ".ruby_history.json"
     puts "SKIPPED: Ruby history file"
     next
@@ -72,5 +78,49 @@ history.reverse_each do |entry|
     next
   end
 
-  puts "WOULD RESTORE: #{destination} -> #{source}"
+  if apply
+    parent = File.dirname(source)
+
+    unless Dir.exist?(parent)
+      puts "SKIPPED: Original parent directory missing"
+      next
+    end
+
+    resolved_root = File.realpath(root)
+    resolved_parent = File.realpath(parent)
+
+    safe_parent = resolved_parent == resolved_root ||
+      resolved_parent.start_with?(resolved_root + File::SEPARATOR)
+
+    resolved_destination = File.realpath(destination)
+
+    safe_destination = resolved_destination.start_with?(
+      resolved_root  + File::SEPARATOR
+    )
+  
+    unless safe_parent && safe_destination
+      puts "SKIPPED: Unsafe file path"
+      next
+    end
+
+    puts "Safe destination: #{safe_destination}"
+    puts "Safe parent directory: #{safe_parent}"
+
+    if Dir.exist? (parent)
+      puts "Parent directory exist"
+    else
+      puts "Parent directory needs to be created "
+    end
+
+    if File.symlink?(source) || File.symlink?(destination) || !File.file?(destination)
+      puts "SKIPPED: Unsupported file path"
+      next
+    end
+
+    FileUtils.mv(destination, source)
+    puts "RESTORED: #{source}"
+
+  else
+    puts "WOULD RESTORE: #{source}"
+  end
 end
